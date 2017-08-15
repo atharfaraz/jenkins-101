@@ -23,7 +23,7 @@ Vagrant.configure("2") do |config|
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
   # NOTE: This will enable public access to the opened port
-  # config.vm.network "forwarded_port", guest: 80, host: 8080
+  config.vm.network "forwarded_port", guest: 8080, host: 8090
 
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine and only allow access
@@ -64,8 +64,39 @@ Vagrant.configure("2") do |config|
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
   config.vm.provision "shell", inline: <<-SHELL
+    # Get the public IP of your app Server
     # ifconfig enp0s8 | grep "inet " | awk -F' ' '{print $2}'
     echo -e "Please take a note of public IP mentioned below."
     hostname -I | awk -F' ' '{print $2}'
+
+    # Update your CentOS system
+    yum install epel-release
+    yum update -y
+
+    # Install Java
+    yum install java-1.8.0-openjdk.x86_64
+    java -version
+
+    # Create a dedicated user for Apache Tomcat
+    groupadd tomcat
+    mkdir -p /opt/tomcat
+    useradd -s /bin/nologin -g tomcat -d /opt/tomcat tomcat
+
+    # Download and install the latest Apache Tomcat
+    cd /tmp
+    wget http://www-us.apache.org/dist/tomcat/tomcat-8/v8.0.33/bin/apache-tomcat-8.0.33.tar.gz
+    tar -zxvf apache-tomcat-8.0.33.tar.gz -C /opt/tomcat --strip-components=1
+
+    # Setup proper permissions
+    cd /opt/tomcat
+    chgrp -R tomcat conf
+    chmod g+rwx conf
+    chmod g+r conf/*
+    chown -R tomcat logs/ temp/ webapps/ work/
+
+    chgrp -R tomcat bin
+    chgrp -R tomcat lib
+    chmod g+rwx bin
+    chmod g+r bin/*
   SHELL
 end
